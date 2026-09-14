@@ -9,15 +9,8 @@ type AuthMode = 'signin' | 'signup' | 'forgot'
 function formatAuthError(errorMsg: string, isSignIn: boolean): string {
   const msg = errorMsg.toLowerCase()
 
-  if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
-    if (isSignIn) {
-      return 'Incorrect password or account does not exist. If you are new, please Sign Up first.'
-    }
-    return 'Invalid email or password.'
-  }
-
   if (msg.includes('user not found') || msg.includes('no user')) {
-    return 'User not registered. Please sign up first.'
+    return 'User not registered, please sign up'
   }
 
   if (msg.includes('email not confirmed')) {
@@ -56,9 +49,11 @@ export default function LoginPage() {
     setError(null)
     setSuccess(null)
 
+    const cleanEmail = email.trim().toLowerCase()
+
     // Check for disposable / temporary email providers during signup or reset
     if (mode === 'signup' || mode === 'forgot') {
-      if (isDisposableEmail(email)) {
+      if (isDisposableEmail(cleanEmail)) {
         setError('Temporary or disposable email addresses are not permitted. Please use a permanent email address.')
         setLoading(false)
         return
@@ -67,7 +62,7 @@ export default function LoginPage() {
 
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -80,16 +75,42 @@ export default function LoginPage() {
       }
     } else if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password,
       })
       if (error) {
-        setError(formatAuthError(error.message, true))
+        const msg = error.message.toLowerCase()
+        if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
+          // Probe if user exists using shouldCreateUser: false
+          const { error: probeError } = await supabase.auth.signInWithOtp({
+            email: cleanEmail,
+            options: { shouldCreateUser: false },
+          })
+
+          if (
+            probeError &&
+            (probeError.message.toLowerCase().includes('signups not allowed') ||
+             probeError.message.toLowerCase().includes('user not found') ||
+             probeError.message.toLowerCase().includes('not found') ||
+             probeError.status === 400 ||
+             probeError.status === 422)
+          ) {
+            setError('User not registered, please sign up')
+          } else {
+            setError('Wrong password')
+          }
+        } else if (msg.includes('user not found')) {
+          setError('User not registered, please sign up')
+        } else if (msg.includes('email not confirmed')) {
+          setError('Email is not confirmed yet. Please check your inbox for the confirmation link.')
+        } else {
+          setError(formatAuthError(error.message, true))
+        }
       } else {
         window.location.href = '/'
       }
     } else if (mode === 'forgot') {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       })
       if (error) {
@@ -107,7 +128,8 @@ export default function LoginPage() {
       setError('Please enter your email address first.')
       return
     }
-    if (isDisposableEmail(email)) {
+    const cleanEmail = email.trim().toLowerCase()
+    if (isDisposableEmail(cleanEmail)) {
       setError('Temporary or disposable email addresses are not permitted.')
       return
     }
@@ -117,7 +139,7 @@ export default function LoginPage() {
     setSuccess(null)
 
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: cleanEmail,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -138,7 +160,7 @@ export default function LoginPage() {
         <h1>Board</h1>
         <p>
           {mode === 'forgot'
-            ? 'Reset your password securely via email [Recommended].'
+            ? 'Reset your password securely via email.'
             : 'Your personal infinite canvas for collecting ideas.'}
         </p>
 
@@ -173,7 +195,7 @@ export default function LoginPage() {
                     }}
                     className="forgot-password-link"
                   >
-                    Forgot password? <span className="recommended-tag">[Recommended]</span>
+                    Forgot password?
                   </button>
                 )}
               </div>

@@ -51,8 +51,10 @@ export default function ResetPasswordPage() {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Create New Password</h1>
-        <p>Set a new password below, or continue directly to your board.</p>
+        <h1>
+          Create New Password <span className="recommended-tag" style={{ verticalAlign: 'middle', marginLeft: '6px' }}>[Recommended]</span>
+        </h1>
+        <p>Set a new secure password below, or choose to log in directly to your board without changing it.</p>
 
         {error && <div className="login-error">{error}</div>}
         {success && <div className="login-success">{success}</div>}
@@ -137,7 +139,7 @@ export default function ResetPasswordPage() {
 
             <div className="login-divider">or</div>
 
-            {/* Option to login directly without updating password */}
+            {/* Direct Login without updating password */}
             <button
               type="button"
               onClick={() => {
@@ -154,7 +156,7 @@ export default function ResetPasswordPage() {
                 gap: '8px',
               }}
             >
-              <span>Continue to Board Without Changing Password →</span>
+              <span>Login Directly to Board (Without Updating Password) →</span>
             </button>
           </>
         )}
