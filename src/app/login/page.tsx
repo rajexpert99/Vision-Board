@@ -6,6 +6,39 @@ import { isDisposableEmail } from '@/lib/email-validator'
 
 type AuthMode = 'signin' | 'signup' | 'forgot'
 
+function formatAuthError(errorMsg: string, isSignIn: boolean): string {
+  const msg = errorMsg.toLowerCase()
+
+  if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
+    if (isSignIn) {
+      return 'Incorrect password or account does not exist. If you are new, please Sign Up first.'
+    }
+    return 'Invalid email or password.'
+  }
+
+  if (msg.includes('user not found') || msg.includes('no user')) {
+    return 'User not registered. Please sign up first.'
+  }
+
+  if (msg.includes('email not confirmed')) {
+    return 'Email is not confirmed yet. Please check your inbox for the confirmation link.'
+  }
+
+  if (msg.includes('user already registered') || msg.includes('already exists')) {
+    return 'An account with this email already exists. Please sign in instead.'
+  }
+
+  if (msg.includes('over_email_send_rate_limit') || msg.includes('rate limit')) {
+    return 'Email rate limit reached. Please wait a few moments before requesting another link.'
+  }
+
+  if (msg.includes('password should be at least')) {
+    return 'Password must be at least 6 characters long.'
+  }
+
+  return errorMsg
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,7 +74,7 @@ export default function LoginPage() {
         },
       })
       if (error) {
-        setError(error.message)
+        setError(formatAuthError(error.message, false))
       } else {
         setSuccess('Account created! Please check your email for a confirmation link.')
       }
@@ -51,7 +84,7 @@ export default function LoginPage() {
         password,
       })
       if (error) {
-        setError(error.message)
+        setError(formatAuthError(error.message, true))
       } else {
         window.location.href = '/'
       }
@@ -60,9 +93,9 @@ export default function LoginPage() {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       })
       if (error) {
-        setError(error.message)
+        setError(formatAuthError(error.message, false))
       } else {
-        setSuccess('Password reset link sent! Check your email inbox to proceed.')
+        setSuccess('Password reset link sent! Check your email inbox to create a new password.')
       }
     }
 
@@ -91,7 +124,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(error.message)
+      setError(formatAuthError(error.message, false))
     } else {
       setSuccess('Check your email for a magic sign-in link.')
     }
@@ -105,7 +138,7 @@ export default function LoginPage() {
         <h1>Board</h1>
         <p>
           {mode === 'forgot'
-            ? 'Reset your account password via email.'
+            ? 'Reset your password securely via email [Recommended].'
             : 'Your personal infinite canvas for collecting ideas.'}
         </p>
 
@@ -138,17 +171,9 @@ export default function LoginPage() {
                       setError(null)
                       setSuccess(null)
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      padding: 0,
-                      textDecoration: 'underline'
-                    }}
+                    className="forgot-password-link"
                   >
-                    Forgot password?
+                    Forgot password? <span className="recommended-tag">[Recommended]</span>
                   </button>
                 )}
               </div>

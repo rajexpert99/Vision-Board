@@ -925,6 +925,36 @@ ul, ol {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.forgot-password-link {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: underline;
+  transition: color var(--duration-fast);
+}
+
+.forgot-password-link:hover {
+  color: var(--accent, #7d2ae8);
+}
+
+.recommended-tag {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 0.72rem;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-block;
+  letter-spacing: 0.02em;
+}
+
 .login-btn {
   width: 100%;
   padding: var(--space-sm) var(--space-md);
