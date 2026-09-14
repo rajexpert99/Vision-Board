@@ -123,17 +123,6 @@ export function CanvaSidebar({
         </div>
 
         <button
-          className={`canva-rail-item ${activeTab === 'templates' ? 'active' : ''}`}
-          onClick={() => setActiveTab(activeTab === 'templates' ? '' : 'templates')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path d="M3 9h18M9 21V9" />
-          </svg>
-          <span>Templates</span>
-        </button>
-
-        <button
           className={`canva-rail-item ${activeTab === 'elements' ? 'active' : ''}`}
           onClick={() => setActiveTab(activeTab === 'elements' ? '' : 'elements')}
         >
@@ -197,19 +186,6 @@ export function CanvaSidebar({
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
           <span>Projects</span>
-        </button>
-
-        <button
-          className={`canva-rail-item ${activeTab === 'apps' ? 'active' : ''}`}
-          onClick={() => setActiveTab(activeTab === 'apps' ? '' : 'apps')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <rect x="3" y="3" width="7" height="7" rx="1.5" />
-            <rect x="14" y="3" width="7" height="7" rx="1.5" />
-            <rect x="14" y="14" width="7" height="7" rx="1.5" />
-            <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          </svg>
-          <span>Apps</span>
         </button>
 
         <button
@@ -451,8 +427,8 @@ export function CanvaSidebar({
               </div>
             )}
 
-            {/* Elements / Templates / Brand / Apps Placeholder */}
-            {(activeTab === 'elements' || activeTab === 'templates' || activeTab === 'brand' || activeTab === 'apps') && (
+            {/* Elements / Brand Placeholder */}
+            {(activeTab === 'elements' || activeTab === 'brand') && (
               <div className="canva-elements-grid">
                 <p style={{ color: '#64748b', fontSize: '13px' }}>
                   Click items to add shapes and templates to your canvas.

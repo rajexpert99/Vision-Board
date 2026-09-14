@@ -48,8 +48,29 @@ export function BoardCanvas({
   } | null>(null)
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([])
   const [showEmptyHint, setShowEmptyHint] = useState(initialCards.length === 0)
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const debounceTimerRef = useRef<Record<string, NodeJS.Timeout>>({})
   const supabase = createClient()
+
+  // Handle password recovery redirect if user arrived from reset password email link
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash
+      const search = window.location.search
+      if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('next=/reset-password')) {
+        window.location.href = '/reset-password'
+        return
+      }
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        window.location.href = '/reset-password'
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
 
   // Hydrate tldraw with existing cards when editor mounts
   const handleMount = useCallback(
@@ -75,7 +96,64 @@ export function BoardCanvas({
     [initialCards, initialGroups]
   )
 
-  // Listen for shape position/size changes and sync to DB
+  // Explicit Save Board Function
+  const saveBoard = useCallback(async () => {
+    if (!editor) return
+    setSaveStatus('saving')
+
+    try {
+      // 1. Collect all card shapes on canvas
+      const shapes = editor.getCurrentPageShapes()
+      const cardShapes = shapes.filter((s: any) => s.type?.startsWith('board-card-'))
+
+      // 2. Persist each card shape coordinates and dimensions
+      for (const shape of cardShapes) {
+        const cardId = (shape as any).props?.cardId
+        if (!cardId) continue
+
+        await supabase
+          .from('cards')
+          .update({
+            x: shape.x,
+            y: shape.y,
+            width: (shape as any).props?.w,
+            height: (shape as any).props?.h,
+          })
+          .eq('id', cardId)
+      }
+
+      // 3. Save local backup to localStorage
+      const camera = editor.getCamera()
+      localStorage.setItem(
+        `board_snapshot_${boardId}`,
+        JSON.stringify({
+          cards,
+          camera,
+          timestamp: Date.now(),
+        })
+      )
+
+      setSaveStatus('saved')
+    } catch (err) {
+      console.error('Save error:', err)
+      setSaveStatus('error')
+    }
+  }, [editor, boardId, cards, supabase])
+
+  // Keyboard shortcut: Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        saveBoard()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [saveBoard])
+
+  // Listen for shape position/size changes and auto-sync to DB
   useEffect(() => {
     if (!editor) return
 
@@ -87,12 +165,14 @@ export function BoardCanvas({
             const cardId = to.props?.cardId
             if (!cardId) continue
 
+            setSaveStatus('saving')
+
             // Debounce the DB write
             if (debounceTimerRef.current[cardId]) {
               clearTimeout(debounceTimerRef.current[cardId])
             }
             debounceTimerRef.current[cardId] = setTimeout(async () => {
-              await supabase
+              const { error } = await supabase
                 .from('cards')
                 .update({
                   x: to.x,
@@ -101,7 +181,13 @@ export function BoardCanvas({
                   height: to.props?.h,
                 })
                 .eq('id', cardId)
-            }, 500)
+
+              if (!error) {
+                setSaveStatus('saved')
+              } else {
+                setSaveStatus('error')
+              }
+            }, 400)
           }
         }
       },
@@ -598,6 +684,49 @@ export function BoardCanvas({
 
       {/* Canvas area */}
       <div className="app-canvas-area">
+        {/* Top-Right Save Status & Save Button */}
+        <div className="board-top-actions">
+          <div className={`save-status-badge ${saveStatus}`}>
+            {saveStatus === 'saving' ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+                Saving…
+              </>
+            ) : saveStatus === 'error' ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Save Error
+              </>
+            ) : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Saved
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={saveBoard}
+            className="save-board-btn"
+            title="Save Board (Ctrl + S)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            Save
+          </button>
+        </div>
+
         {/* Sidebar toggle (mobile) */}
         <button
           className="sidebar-toggle"

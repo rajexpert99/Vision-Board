@@ -1903,3 +1903,66 @@ ul, ol {
   transform: translateY(-1px);
 }
 
+/* ============================================================
+   TOP-RIGHT BOARD ACTIONS & SAVE STATUS
+   ============================================================ */
+
+.board-top-actions {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.save-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 150ms ease;
+}
+
+.save-status-badge.saved {
+  color: #16a34a;
+}
+
+.save-status-badge.saving {
+  color: #d97706;
+}
+
+.save-board-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #7d2ae8;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(125, 42, 232, 0.25);
+  transition: all 150ms ease;
+}
+
+.save-board-btn:hover {
+  background: #6b21a8;
+  transform: translateY(-1px);
+}
+
+.save-board-btn:active {
+  transform: translateY(0);
+}
+
