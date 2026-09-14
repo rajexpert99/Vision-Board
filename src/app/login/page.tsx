@@ -29,6 +29,10 @@ function formatAuthError(errorMsg: string, isSignIn: boolean): string {
     return 'Password must be at least 6 characters long.'
   }
 
+  if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network')) {
+    return 'Network connection error. Please check your internet connection and try again.'
+  }
+
   return errorMsg
 }
 
@@ -51,76 +55,89 @@ export default function LoginPage() {
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // Check for disposable / temporary email providers during signup or reset
-    if (mode === 'signup' || mode === 'forgot') {
-      if (isDisposableEmail(cleanEmail)) {
-        setError('Temporary or disposable email addresses are not permitted. Please use a permanent email address.')
-        setLoading(false)
-        return
-      }
-    }
-
-    if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-      if (error) {
-        setError(formatAuthError(error.message, false))
-      } else {
-        setSuccess('Account created! Please check your email for a confirmation link.')
-      }
-    } else if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      })
-      if (error) {
-        const msg = error.message.toLowerCase()
-        if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
-          // Probe if user exists using shouldCreateUser: false
-          const { error: probeError } = await supabase.auth.signInWithOtp({
-            email: cleanEmail,
-            options: { shouldCreateUser: false },
-          })
-
-          if (
-            probeError &&
-            (probeError.message.toLowerCase().includes('signups not allowed') ||
-             probeError.message.toLowerCase().includes('user not found') ||
-             probeError.message.toLowerCase().includes('not found') ||
-             probeError.status === 400 ||
-             probeError.status === 422)
-          ) {
-            setError('User not registered, please sign up')
-          } else {
-            setError('Wrong password')
-          }
-        } else if (msg.includes('user not found')) {
-          setError('User not registered, please sign up')
-        } else if (msg.includes('email not confirmed')) {
-          setError('Email is not confirmed yet. Please check your inbox for the confirmation link.')
-        } else {
-          setError(formatAuthError(error.message, true))
+    try {
+      // Check for disposable / temporary email providers during signup or reset
+      if (mode === 'signup' || mode === 'forgot') {
+        if (isDisposableEmail(cleanEmail)) {
+          setError('Temporary or disposable email addresses are not permitted. Please use a permanent email address.')
+          setLoading(false)
+          return
         }
-      } else {
-        window.location.href = '/'
       }
-    } else if (mode === 'forgot') {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-      })
-      if (error) {
-        setError(formatAuthError(error.message, false))
-      } else {
-        setSuccess('Password reset link sent! Check your email inbox to create a new password.')
-      }
-    }
 
-    setLoading(false)
+      if (mode === 'signup') {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        })
+        if (signUpError) {
+          setError(formatAuthError(signUpError.message, false))
+        } else {
+          setSuccess('Account created! Please check your email for a confirmation link.')
+        }
+      } else if (mode === 'signin') {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        })
+        if (signInError) {
+          const msg = signInError.message.toLowerCase()
+          if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
+            try {
+              // Probe if user exists using shouldCreateUser: false
+              const { error: probeError } = await supabase.auth.signInWithOtp({
+                email: cleanEmail,
+                options: { shouldCreateUser: false },
+              })
+
+              if (
+                probeError &&
+                (probeError.message.toLowerCase().includes('signups not allowed') ||
+                 probeError.message.toLowerCase().includes('user not found') ||
+                 probeError.message.toLowerCase().includes('not found') ||
+                 probeError.status === 400 ||
+                 probeError.status === 422)
+              ) {
+                setError('User not registered, please sign up')
+              } else {
+                setError('Wrong password')
+              }
+            } catch {
+              setError('Wrong password')
+            }
+          } else if (msg.includes('user not found')) {
+            setError('User not registered, please sign up')
+          } else if (msg.includes('email not confirmed')) {
+            setError('Email is not confirmed yet. Please check your inbox for the confirmation link.')
+          } else {
+            setError(formatAuthError(signInError.message, true))
+          }
+        } else {
+          window.location.href = '/'
+        }
+      } else if (mode === 'forgot') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        })
+        if (resetError) {
+          setError(formatAuthError(resetError.message, false))
+        } else {
+          setSuccess('Password reset link sent! Check your email inbox to create a new password.')
+        }
+      }
+    } catch (err: any) {
+      const errMsg = err?.message || ''
+      if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('network')) {
+        setError('Network connection error. Please check your internet connection and try again.')
+      } else {
+        setError(errMsg || 'An unexpected error occurred. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleMagicLink() {
@@ -138,20 +155,29 @@ export default function LoginPage() {
     setError(null)
     setSuccess(null)
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: cleanEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    try {
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
 
-    if (error) {
-      setError(formatAuthError(error.message, false))
-    } else {
-      setSuccess('Check your email for a magic sign-in link.')
+      if (otpError) {
+        setError(formatAuthError(otpError.message, false))
+      } else {
+        setSuccess('Check your email for a magic sign-in link.')
+      }
+    } catch (err: any) {
+      const errMsg = err?.message || ''
+      if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('network')) {
+        setError('Network connection error. Please check your internet connection and try again.')
+      } else {
+        setError(errMsg || 'An unexpected error occurred. Please try again.')
+      }
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
