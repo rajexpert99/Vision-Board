@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Board — Personal Vision Board
 
-## Getting Started
+An infinite canvas web app for collecting images, files, links, and notes. Organize them into named groups, search across everything, and let old items auto-expire.
 
-First, run the development server:
+Built with **Next.js 15**, **tldraw**, and **Supabase**.
+
+---
+
+## Quick Start
+
+### 1. Create a Supabase Project
+
+1. Go to [supabase.com](https://supabase.com) and create a new project.
+2. In the SQL Editor, run the contents of [`supabase/schema.sql`](./supabase/schema.sql). This creates:
+   - `boards`, `groups`, and `cards` tables with Row Level Security
+   - A trigger that auto-creates a default board on user signup
+   - A `card-files` Storage bucket with user-scoped access policies
+
+### 2. Configure Environment Variables
+
+Copy the example file and fill in your Supabase credentials:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.local.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Edit `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Optional: tldraw license key (removes watermark in production)
+NEXT_PUBLIC_TLDRAW_LICENSE_KEY=
 
-## Learn More
+# For the auto-expiry cron job
+CRON_SECRET=any-random-string
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-To learn more about Next.js, take a look at the following resources:
+You can find your keys in the Supabase Dashboard → Settings → API.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Install and Run
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cd board-app
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000). Sign up with an email and password to get started.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Enable Auth (if using magic links)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+In Supabase Dashboard → Authentication → URL Configuration, add:
+
+```
+http://localhost:3000/auth/callback
+```
+
+For production, also add your Vercel domain:
+
+```
+https://your-app.vercel.app/auth/callback
+```
+
+---
+
+## Deploying to Vercel
+
+1. Push the `board-app` directory to a GitHub repo.
+2. Import the repo in [vercel.com](https://vercel.com).
+3. Set environment variables in Vercel's project settings:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `CRON_SECRET`
+   - `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` (optional)
+4. Deploy. Vercel will automatically set up the daily cron job from `vercel.json`.
+
+---
+
+## Features
+
+| Feature | Status |
+|---------|--------|
+| Infinite pan/zoom canvas (tldraw) | ✅ |
+| Note cards (click/paste text) | ✅ |
+| Link cards with OG preview | ✅ |
+| Image upload with thumbnail | ✅ |
+| File upload | ✅ |
+| Multi-select → Group cards | ✅ |
+| Sidebar navigation (groups, recent) | ✅ |
+| Search (titles, text, filenames) | ✅ |
+| Auto-expiry (30d default) | ✅ |
+| Pin to make permanent | ✅ |
+| Context menu (expiry, delete, pin) | ✅ |
+| Responsive / mobile web | ✅ |
+| Auth (email/password + magic link) | ✅ |
+| Daily cleanup cron | ✅ |
+
+---
+
+## Architecture
+
+```
+Next.js App Router
+├── Server Components — Auth, data fetching
+├── Client Components — tldraw canvas, sidebar, search
+├── API Routes
+│   ├── /api/unfurl — OG metadata scraping
+│   └── /api/cron/cleanup — Daily expired card cleanup
+└── Supabase
+    ├── Auth (email/password + magic link)
+    ├── Postgres (boards, cards, groups + RLS)
+    └── Storage (card-files bucket)
+```
+
+---
+
+## License
+
+Private / personal use.
